@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.CookieValue;
 
 import javax.annotation.Resource;
 import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.time.LocalDateTime;
@@ -107,7 +108,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         // 7.保存用户信息到 redis 中
         // 7.1.随机生成token，作为登录令牌（true表示没有中间的横杠）
         String token = UUID.randomUUID().toString(true);
-        // 7.2.将User对象转为HashMap存储
+        // 7.2.将User对象转为userDTO去除敏感信息，并转为HashMap存储
         UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
         Map<String, Object> userMap = BeanUtil.beanToMap(userDTO, new HashMap<>(),
                 CopyOptions.create()
@@ -119,7 +120,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         // 7.4.设置token有效期，30min
         stringRedisTemplate.expire(tokenKey, LOGIN_USER_TTL, TimeUnit.MINUTES);
 
-        // 8.返回token
+        // 8.返回token（由前端做进一步处理，如保存到cookie）
         return Result.ok(token);
     }
 
@@ -182,11 +183,25 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         return Result.ok(count);
     }
 
+    @Override
+    public Result logout(HttpServletRequest request) {
+        // Redis保存的UserDTO，表示了用户是否登录
+        String token = request.getHeader("authorization");
+        String tokenKey = LOGIN_USER_KEY + token;
+        Boolean delete = stringRedisTemplate.delete(tokenKey);
+        if (Boolean.TRUE.equals(delete)) {
+            log.debug("删除成功{}", tokenKey);
+            return Result.ok("退出成功");
+        }
+        log.debug("删除失败{}", tokenKey);
+        return Result.fail("退出失败");
+    }
+
     private User createUserWithPhone(String phone) {
         // 1.创建用户
-        User user = new User();
-        user.setPhone(phone);
-        user.setNickName(USER_NICK_NAME_PREFIX + RandomUtil.randomString(10));
+        User user = new User()
+                .setPhone(phone)
+                .setNickName(USER_NICK_NAME_PREFIX + RandomUtil.randomString(10));
         // 2.保存用户
         save(user);
         return user;
