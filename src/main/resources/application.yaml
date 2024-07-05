@@ -5,11 +5,11 @@ spring:
     name: hmdp
   datasource:
     driver-class-name: com.mysql.jdbc.Driver
-    url: jdbc:mysql://127.0.0.1:3306/hmdp?useSSL=false
+    url: jdbc:mysql://javanode:3306/hmdp?useSSL=false
     username: root
     password: 123456
   redis:
-    host: 192.168.29.128
+    host: javanode
     port: 6379
     lettuce:
       pool:
@@ -19,9 +19,9 @@ spring:
         time-between-eviction-runs: 10s
     database: 1
   rabbitmq:
-    host: 192.168.29.128 # ip
+    host: javanode # ip
     port: 5672
-    username: admin
+    username: root
     password: 123456
     virtual-host: /
     listener:
